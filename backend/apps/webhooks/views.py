@@ -1,10 +1,15 @@
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.viewsets import ReadOnlyModelViewSet
 
 from apps.destinations.models import Destination
-from .serializers import IngestWebhookResponseSerializer
+from .serializers import (
+    IngestWebhookResponseSerializer, 
+    WebhookEventSerializer
+)
 from .exceptions import DestinationInactiveError
+from .models import WebhookEvent
 from .services import (
     IngestWebhookRequest,
     IngestWebhookService,
@@ -51,3 +56,21 @@ class WebhookIngestView(APIView):
         )
 
         return Response(serializer.data, status=response_status)
+
+
+class WebhookEventViewSet(ReadOnlyModelViewSet):
+    serializer_class = WebhookEventSerializer
+    lookup_field = "id"
+
+    def get_queryset(self):
+        queryset = WebhookEvent.objects.select_related("destination")
+
+        status = self.request.query_params.get("status")
+        if status:
+            queryset = queryset.filter(status=status)
+
+        destination_id = self.request.query_params.get("destination")
+        if destination_id:
+            queryset = queryset.filter(destination__id=destination_id)
+
+        return queryset

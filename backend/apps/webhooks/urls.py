@@ -1,6 +1,10 @@
 from django.urls import path
-from .views import WebhookIngestView
+from rest_framework.routers import DefaultRouter
+from .views import WebhookIngestView, WebhookEventViewSet
 
+
+router = DefaultRouter()
+router.register("webhooks", WebhookEventViewSet, basename="webhook")
 
 urlpatterns = [
     path(
@@ -9,3 +13,5 @@ urlpatterns = [
         name="webhook-ingest",
     ),
 ]
+
+urlpatterns += router.urls
