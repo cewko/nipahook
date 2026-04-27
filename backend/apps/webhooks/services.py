@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 
 from django.db import transaction
-from apps.deliveries.services import DeliveryService
 
 from apps.destinations.models import Destination
 from apps.deliveries.tasks import deliver_webhook
@@ -26,7 +25,7 @@ class IngestWebhookRequest:
 
 
 class IngestWebhookService:
-    def ingest(self, data: IngestWebhookRequest) -> WebhookEvent:
+    def ingest(self, data: IngestWebhookRequest) -> IngestWebhookResult:
         destination = self._get_active_destination(data.destination_id)
         idempotency_key = self._extract_idempotency_key(data.headers, data.payload)
     

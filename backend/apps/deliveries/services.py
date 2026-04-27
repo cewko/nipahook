@@ -80,7 +80,7 @@ class DeliveryService:
         self.client = client or WebhookDeliveryClient()
         self.retry_policy = retry_policy or RetryPolicy()
 
-    def deliver(self, event_id: str) -> DeliveryAttempt:
+    def deliver(self, event_id: str) -> None:
         attempt = self._start_attempt(event_id)
         result = self.client.send(attempt)
 
@@ -150,11 +150,12 @@ class DeliveryService:
                 "status", 
                 "delivered_at", 
                 "updated_at",
+                "failed_at",
                 "next_retry_at",
                 "updated_at"
             ])
             return
-            
+
         if self.retry_policy.should_retry(
             attempt_count=attempt.attempt_number,
             max_retries=event.destination.max_retries
