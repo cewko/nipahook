@@ -55,6 +55,13 @@ class WebhookEvent(UUIDModel, TimeStampedModel):
             models.Index(fields=["destination", "status", "-received_at"]),
             models.Index(fields=["payload_hash"]),
         ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["destination", "idempotency_key"],
+                condition=~models.Q(idempotency_key=""),
+                name="unique_idempotency_key_per_destination"
+            )
+        ]
 
     def __str__(self):
         return f"{self.destination.name} - {self.status}"

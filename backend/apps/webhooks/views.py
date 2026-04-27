@@ -22,7 +22,7 @@ class WebhookIngestView(APIView):
         payload = request.data
 
         try:
-            event = service.ingest(
+            result = service.ingest(
                 IngestWebhookRequest(
                     destination_id=destination_id,
                     method=request.method,
@@ -43,6 +43,11 @@ class WebhookIngestView(APIView):
                 status=status.HTTP_409_CONFLICT,
             )
 
-        serializer = IngestWebhookResponseSerializer(event)
+        serializer = IngestWebhookResponseSerializer(result)
+        response_status = (
+            status.HTTP_202_ACCEPTED
+            if result.created
+            else status.HTTP_200_OK
+        )
 
-        return Response(serializer.data, status=status.HTTP_202_ACCEPTED)
+        return Response(serializer.data, status=response_status)

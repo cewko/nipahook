@@ -9,6 +9,12 @@ from .exceptions import DestinationInactiveError
 
 
 @dataclass(frozen=True)
+class IngestWebhookResult:
+    event: WebhookEvent
+    created: bool
+
+
+@dataclass(frozen=True)
 class IngestWebhookRequest:
     destination_id: str
     method: str
@@ -21,11 +27,20 @@ class IngestWebhookRequest:
 class IngestWebhookService:
     def ingest(self, data: IngestWebhookRequest) -> WebhookEvent:
         destination = self._get_active_destination(data.destination_id)
+        idempotency_key = self._extract_idempotency_key(data.headers, data.payload)
     
         with transaction.atomic():
+            existing_event = self._get_existing_event(destination, idempotency_key)
+
+            if existing_event:
+                return IngestWebhookResult(
+                    event=existing_event,
+                    created=False
+                )
+
             event = WebhookEvent.objects.create(
                 destination=destination,
-                idempotency_key=self._extract_idempotency_key(data.headers, data.payload),
+                idempotency_key=idempotency_key,
                 method=data.method,
                 headers=data.headers,
                 query_params=data.query_params,
@@ -38,7 +53,10 @@ class IngestWebhookService:
                 lambda: DeliveryService().deliver(str(event.id))
             )
 
-            return event
+            return IngestWebhookResult(
+                event=event,
+                created=True
+            )
 
     def _get_active_destination(self, destination_id: str) -> Destination:
         destination = Destination.objects.get(id=destination_id)
@@ -57,4 +75,21 @@ class IngestWebhookService:
             or payload.get("id")
             or payload.get("event_id")
             or ""
+        )
+
+    def _get_existing_event(
+        self,
+        destination: Destination,
+        idempotency_key: str,
+    ) -> WebhookEvent | None:
+        if not idempotency_key:
+            return None
+
+        return (
+            WebhookEvent.objects
+            .filter(
+                destination=destination,
+                idempotency_key=idempotency_key
+            )
+            .first()
         )

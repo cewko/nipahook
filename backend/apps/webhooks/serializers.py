@@ -27,7 +27,8 @@ class WebhookEventSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
-class IngestWebhookResponseSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = WebhookEvent
-        fields = ["id", "status", "received_at"]
+class IngestWebhookResponseSerializer(serializers.Serializer):
+    id = serializers.UUIDField(source="event.id")
+    status = serializers.CharField(source="event.status")
+    received_at = serializers.DateTimeField(source="event.received_at")
+    created = serializers.BooleanField()
