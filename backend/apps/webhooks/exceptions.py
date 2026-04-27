@@ -1,0 +1,2 @@
+class DestinationInactiveError(Exception):
+    pass
