@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 from django.db import transaction
+from apps.deliveries.services import DeliveryService
 
 from apps.destinations.models import Destination
 from .models import WebhookEvent
@@ -33,7 +34,9 @@ class IngestWebhookService:
                 status=WebhookEvent.Status.QUEUED,
             )
 
-            # TODO: enqueue delivery
+            transaction.on_commit(
+                lambda: DeliveryService().deliver(str(event.id))
+            )
 
             return event
 
