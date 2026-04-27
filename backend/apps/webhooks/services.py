@@ -4,6 +4,7 @@ from django.db import transaction
 from apps.deliveries.services import DeliveryService
 
 from apps.destinations.models import Destination
+from apps.deliveries.tasks import deliver_webhook
 from .models import WebhookEvent
 from .exceptions import DestinationInactiveError
 
@@ -50,7 +51,7 @@ class IngestWebhookService:
             )
 
             transaction.on_commit(
-                lambda: DeliveryService().deliver(str(event.id))
+                lambda: deliver_webhook.delay(str(event.id))
             )
 
             return IngestWebhookResult(

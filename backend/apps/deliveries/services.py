@@ -127,6 +127,14 @@ class DeliveryService:
         attempt.finished_at = timezone.now()
         attempt.save()
 
+    def _schedule_retry(self, event: WebhookEvent, delay_seconds: int) -> None:
+        from .tasks import deliver_webhook
+
+        deliver_webhook.apply_async(
+            args=[str(event.id)],
+            countdown=delay_seconds
+        )
+
     def _update_event_status(
         self, 
         event: WebhookEvent, 
@@ -146,21 +154,27 @@ class DeliveryService:
                 "updated_at"
             ])
             return
+            
         if self.retry_policy.should_retry(
             attempt_count=attempt.attempt_number,
             max_retries=event.destination.max_retries
         ):
-            event.status = WebhookEvent.Status.RETRYING
-            event.failed_at = timezone.now()
-            event.next_retry_at = self.retry_policy.calculate_next_retry_at(
+            delay_seconds = self.retry_policy.calculate_delay_seconds(
                 base_seconds=event.destination.retry_backoff_base_seconds,
                 attempt_number=attempt.attempt_number
             )
+
+            event.status = WebhookEvent.Status.RETRYING
+            event.failed_at = None
+            event.next_retry_at = self.retry_policy.calculate_next_retry_at(delay_seconds)
             event.save(update_fields=[
                 "status", 
+                "failed_at",
                 "next_retry_at", 
                 "updated_at"
             ])
+
+            self._schedule_retry(event, delay_seconds)
             return
 
         event.status = WebhookEvent.Status.FAILED
