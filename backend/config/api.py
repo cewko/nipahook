@@ -6,4 +6,5 @@ urlpatterns = [
     path("", include("apps.webhooks.urls")),
     path("", include("apps.deliveries.urls")),
     path("", include("apps.audit.urls")),
+    path("", include("apps.replays.urls"))
 ]
