@@ -10,6 +10,7 @@ class DestinationAdmin(admin.ModelAdmin):
         "name",
         "target_url",
         "status",
+        "signature_verification_mode",
         "max_retries",
         "timeout_seconds",
         "created_at",
@@ -17,4 +18,30 @@ class DestinationAdmin(admin.ModelAdmin):
     list_filter = ["status", "created_at"]
     search_fields = ["id", "name", "target_url"]
     readonly_fields = ["pkid", "id", "signing_key", "created_at", "updated_at"]
+
+    fieldsets = [
+        (
+            "Destination",
+            {
+                "fields": [
+                    "pkid",
+                    "id",
+                    "name",
+                    "target_url",
+                    "status",
+                ]
+            },
+        ),
+        (
+            "Security",
+            {
+                "fields": [
+                    "signing_key",
+                    "incoming_signature_key",
+                    "signature_verification_mode",
+                ]
+            },
+        ),
+    ]
+
 

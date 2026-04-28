@@ -10,6 +10,10 @@ class Destination(UUIDModel, TimeStampedModel):
         ACTIVE = "active", "Active"
         DISABLED = "disabled", "Disabled"
 
+    class SignatureVerificationMode(models.TextChoices):
+        NONE = "none", "None"
+        GENERIC_HMAC_SHA256 = "generic_hmac_sha256", "Generic HMAC SHA256"
+
     name = models.CharField(max_length=120)
     target_url = models.URLField(max_length=2048)
     status = models.CharField(
@@ -23,6 +27,15 @@ class Destination(UUIDModel, TimeStampedModel):
         max_length=255,
         default=generate_signing_key,
         editable=False
+    )
+    incoming_signature_key = models.CharField(
+        max_length=255,
+        blank=True,
+    )
+    signature_verification_mode = models.CharField(
+        max_length=50,
+        choices=SignatureVerificationMode.choices,
+        default=SignatureVerificationMode.NONE
     )
 
     max_retries = models.PositiveSmallIntegerField(

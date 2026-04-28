@@ -4,6 +4,10 @@ from .models import Destination
 
 
 class DestinationSerializer(serializers.ModelSerializer):
+    incoming_signature_key = serializers.CharField(
+        write_only=True, required=False, allow_blank=True
+    )
+
     class Meta:
         model = Destination
         fields = [
@@ -11,6 +15,8 @@ class DestinationSerializer(serializers.ModelSerializer):
             "name",
             "target_url",
             "status",
+            "incoming_signature_key",
+            "signature_verification_mode",
             "max_retries",
             "timeout_seconds",
             "retry_backoff_base_seconds",
@@ -31,6 +37,7 @@ class DestinationCreateSerializer(serializers.ModelSerializer):
             "target_url",
             "status",
             "signing_key",
+            "incoming_signature_key",
             "max_retries",
             "timeout_seconds",
             "retry_backoff_base_seconds",

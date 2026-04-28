@@ -6,6 +6,7 @@ from apps.destinations.models import Destination
 from apps.deliveries.tasks import deliver_webhook
 from .models import WebhookEvent
 from .exceptions import DestinationInactiveError, WebhookNotCancellableError
+from .signatures import verify_incoming_signature
 
 
 @dataclass(frozen=True)
@@ -72,6 +73,13 @@ class IngestWebhookRequest:
 class IngestWebhookService:
     def ingest(self, data: IngestWebhookRequest) -> IngestWebhookResult:
         destination = self._get_active_destination(data.destination_id)
+
+        verify_incoming_signature(
+            destination=destination,
+            headers=data.headers,
+            raw_body=data.raw_body
+        )
+
         idempotency_key = self._extract_idempotency_key(data.headers, data.payload)
     
         with transaction.atomic():

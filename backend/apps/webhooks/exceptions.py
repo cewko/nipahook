@@ -4,3 +4,7 @@ class DestinationInactiveError(Exception):
 
 class WebhookNotCancellableError(Exception):
     pass
+
+
+class SignatureVerificationError(Exception):
+    pass

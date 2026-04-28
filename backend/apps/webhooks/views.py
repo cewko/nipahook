@@ -12,7 +12,11 @@ from .serializers import (
     IngestWebhookResponseSerializer, 
     WebhookEventSerializer
 )
-from .exceptions import DestinationInactiveError, WebhookNotCancellableError
+from .exceptions import (
+    DestinationInactiveError, 
+    WebhookNotCancellableError,
+    SignatureVerificationError
+)
 from .models import WebhookEvent
 from .services import (
     IngestWebhookRequest,
@@ -64,6 +68,18 @@ class WebhookIngestView(APIView):
                 {"detail": "Destination is disabled."},
                 status=status.HTTP_409_CONFLICT,
             )
+        except SignatureVerificationError as _e:
+            create_audit_log(
+                action=AuditLog.Action.SIGNATURE_FAILED,
+                request=request,
+                metadata={
+                    "destination_id": str(destination_id),
+                    "reason": str(_e)
+                }
+            )
+            return Response({
+                "detail": str(_e)
+            }, status=status.HTTP_401_UNAUTHORIZED)
 
         serializer = IngestWebhookResponseSerializer(result)
         response_status = (

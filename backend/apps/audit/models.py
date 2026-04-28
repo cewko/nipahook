@@ -11,6 +11,7 @@ class AuditLog(UUIDModel, TimeStampedModel):
         DELIVERY_FAILED = "delivery.failed", "Delivery failed"
         EVENT_REPLAYED = "event.replayed", "Event replayed"
         EVENT_CANCELLED = "event.cancelled", "Event cancelled"
+        SIGNATURE_FAILED = "signature.failed", "Signature failed"
 
     actor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
