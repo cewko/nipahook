@@ -1,0 +1,2 @@
+class WebhookCancelledError(Exception):
+    pass

@@ -5,7 +5,52 @@ from django.db import transaction
 from apps.destinations.models import Destination
 from apps.deliveries.tasks import deliver_webhook
 from .models import WebhookEvent
-from .exceptions import DestinationInactiveError
+from .exceptions import DestinationInactiveError, WebhookNotCancellableError
+
+
+@dataclass(frozen=True)
+class CancelWebhookResult:
+    event: WebhookEvent
+    previous_status: str
+
+
+class WebhookCancellationService:
+    cancellable_statuses = {
+        WebhookEvent.Status.RECEIVED,
+        WebhookEvent.Status.QUEUED,
+        WebhookEvent.Status.RETRYING,
+        WebhookEvent.Status.FAILED,
+    }
+
+    @transaction.atomic
+    def cancel(self, event_id: str) -> CancelWebhookResult:
+        event = (
+            WebhookEvent.objects
+            .select_for_update()
+            .select_related("destination")
+            .get(id=event_id)
+        )
+
+        previous_status = event.status
+
+        if event.status == WebhookEvent.Status.CANCELLED:
+            return CancelWebhookResult(event=event, previous_status=previous_status)
+
+        if event.status not in self.cancellable_statuses:
+            raise WebhookNotCancellableError(
+                f"Event with status '{event.status}' cannot be cancelled")
+
+        event.status = WebhookEvent.Status.CANCELLED
+        event.next_retry_at = None
+        event.failed_at = None
+        event.save(update_fields=[
+            "status",
+            "next_retry_at",
+            "failed_at",
+            "updated_at"
+        ])
+
+        return CancelWebhookResult(event=event, previous_status=previous_status)
 
 
 @dataclass(frozen=True)

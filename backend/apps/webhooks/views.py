@@ -1,4 +1,5 @@
 from rest_framework import status
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import ReadOnlyModelViewSet
@@ -11,11 +12,12 @@ from .serializers import (
     IngestWebhookResponseSerializer, 
     WebhookEventSerializer
 )
-from .exceptions import DestinationInactiveError
+from .exceptions import DestinationInactiveError, WebhookNotCancellableError
 from .models import WebhookEvent
 from .services import (
     IngestWebhookRequest,
     IngestWebhookService,
+    WebhookCancellationService
 )
 
 
@@ -89,3 +91,33 @@ class WebhookEventViewSet(ReadOnlyModelViewSet):
             queryset = queryset.filter(destination__id=destination_id)
 
         return queryset
+
+    @action(methods=["post"], detail=True)
+    def cancel(self, request, id=None):
+        service = WebhookCancellationService()
+
+        try:
+            result = service.cancel(str(id))
+        except WebhookEvent.DoesNotExist:
+            return Response({
+                "detail": "Webhook not found",
+            }, status=status.HTTP_404_NOT_FOUND)
+        except WebhookNotCancellableError as _e:
+            return Response({
+                "detail": str(_e),
+            }, status=status.HTTP_409_CONFLICT)
+
+        create_audit_log(
+            action=AuditLog.Action.EVENT_CANCELLED,
+            actor=request.user,
+            entity=result.event,
+            request=request,
+            metadata={
+                "destionation_id": str(result.event.destination.id),
+                "previous_status": result.previous_status,
+                "reason": request.data.get("reason", "")
+            }
+        )
+
+        serializer = self.get_serializer(result.event)
+        return Response(serializer.data, status=status.HTTP_200_OK)

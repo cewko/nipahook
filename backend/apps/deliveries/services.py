@@ -12,6 +12,7 @@ from apps.webhooks.models import WebhookEvent
 from apps.audit.models import AuditLog
 from apps.audit.services import create_audit_log
 from .models import DeliveryAttempt
+from .exceptions import WebhookCancelledError
 from .retry import RetryPolicy
 
 
@@ -83,7 +84,11 @@ class DeliveryService:
         self.retry_policy = retry_policy or RetryPolicy()
 
     def deliver(self, event_id: str) -> None:
-        attempt = self._start_attempt(event_id)
+        try:
+            attempt = self._start_attempt(event_id)
+        except WebhookCancelledError:
+            return
+            
         result = self.client.send(attempt)
 
         self._finish_attempt(attempt, result)
@@ -97,6 +102,9 @@ class DeliveryService:
             .select_related("destination")
             .get(id=event_id)
         )
+
+        if event.status == WebhookEvent.Status.CANCELLED:
+            raise WebhookCancelledError("Webhook is cancelled")
 
         attempt_number = event.delivery_attempts.count() + 1
 
